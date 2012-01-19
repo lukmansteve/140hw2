@@ -1,6 +1,6 @@
 import java.util.*;
 
-// Symtab is a Stack of ArrayLists of Entry
+// Symtab is a Stack of ArrayLists of "Entries"
 
 public class Symtab {
 
@@ -33,16 +33,16 @@ public class Symtab {
     // add var or const entry to current block
     public boolean add_entry(String myid, int myline, TK myVarOrConst) {
         Entry e = search_this_block(myid);
-        if (e != null) {
+        if (e != null) {//if e is there
             System.err.println(e.whatAreYou() +
                                    " " + myid +
                                    " is redeclared on line "+
                                    myline);
                 return false;
         }
-
+			//otherwise it's not so:
         Entry p = new Entry(myid, myline, myVarOrConst);
-        st.peek().add(p);
+        st.peek().add(p);//add the entry to the top array list in the stack.
         return true;
     }
 
@@ -71,8 +71,8 @@ public class Symtab {
     }
 
     private Entry search_this_block(String myid) {
-        ArrayList<Entry> block = st.peek();
-        for( Entry p : block) {
+        ArrayList<Entry> block = st.peek();//top block
+        for(/*all*/ Entry p : block) {
             if( p.getName().equals(myid) ) {
                 return p;
             }

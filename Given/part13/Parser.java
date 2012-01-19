@@ -80,7 +80,7 @@ public class Parser {
     }
 
     private void var_decl() {
-        mustbe(TK.VAR);
+		  mustbe(TK.VAR);
         var_decl_id();
         while( is(TK.COMMA) ) {
             scan();
@@ -88,12 +88,22 @@ public class Parser {
         }
     }
 
+	
     private void var_decl_id() {
         if( is(TK.ID) ) {
             if (symtab.add_entry(tok.string, tok.lineNumber, TK.VAR)) {
                 gcprint("int ");
                 gcprintid(tok.string);
-                gcprint("="+initialValueEVariable+";");
+					 scan();
+					 if ( is(TK.OPENBR)) {
+						  bound(true);//true => lower bound
+						  mustbe(TK.COLON);
+						  bound(false);//false => upper bound
+						  mustbe(TK.CLOSEBR);//need to know size / offset by here...
+					}
+					 else
+                	   gcprint("="+initialValueEVariable+";");
+					 return;
             }
             scan();
         }
@@ -101,6 +111,36 @@ public class Parser {
             parse_error("expected id in var declaration, got " + tok);
         }
     }
+
+	// public boolean add_entry(String myid, int myline, TK myVarOrConst)
+
+
+	 private void bound(boolean lower){
+		int multiplyBy = 1;
+		if( is (TK.DASH) ) {
+			multiplyBy = -1;
+			scan();
+		}
+		String myid;
+		if (lower){
+			myid = tok.string + "_lower";
+			myname = tok.string + "_arrayname" 
+		}
+		else myid = tok.string + "_upper";
+		
+		
+		add_entry(myid, linenumber, TK.VAR);
+				
+	
+		
+		if( !is (TK.NUM) ) {
+			parse_error("expected number");
+			return;
+		}
+		gcprint(tok.string);
+	  		boundry = Integer.parseInt(tok.string);
+		
+	}
 
     private void const_decl() {
         mustbe(TK.CONST);

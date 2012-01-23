@@ -19,6 +19,7 @@ public class TK {
 
     public static final TK VAR     = new TK("TK.VAR");     // var
     public static final TK CONST   = new TK("TK.CONST");   // const
+    public static final TK ARRAY   = new TK("TK.ARRAY");   // array
 
     public static final TK PRINT   = new TK("TK.PRINT");   // print
     public static final TK IF      = new TK("TK.IF");      // if
@@ -33,10 +34,13 @@ public class TK {
     public static final TK DOWNTO  = new TK("TK.DOWNTO");  // downto
     public static final TK REPEAT  = new TK("TK.REPEAT");  // repeat
     public static final TK UNTIL   = new TK("TK.UNTIL");   // until
-
+    
+    public static final TK LBRACKET = new TK("TK.LBRACKET"); // [
+    public static final TK RBRACKET = new TK("TK.RBRACKET"); // ]
+    public static final TK COLON   = new TK("TK.COLON");   // :
   
     public static final TK COMMA  = new TK("TK.COMMA");    // ,
-
+    
     public static final TK ASSIGN = new TK("TK.ASSIGN");   // :=
     public static final TK LPAREN = new TK("TK.LPAREN");   // (
     public static final TK RPAREN = new TK("TK.RPAREN");   // )

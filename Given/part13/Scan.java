@@ -101,20 +101,24 @@ public class Scan {
                     case '-':
                         return ccase1('-', TK.MINUS);
                     case '"':
-			String str = "";
-			c = getchar();
-			while (c!= '"' && c!= '\n' && c!= EOF) {
-				str += (char) c;
-				c = getchar();
-			}
-			if (c=='"') {
-				str = '"' + str + '"';
-				return new Token(TK.STRING, str, linenumber);
-			}
-			else {
-				System.err.println("scan: string missing closing \"; quitting near "+str);
-				return new Token(TK.ERROR, "bad string", linenumber);
-			}
+						String str = "";
+						c = getchar();
+						while (c!= '"' && c!= '\n' && c!= EOF) {
+							str += (char) c;
+							c = getchar();
+						}
+						if (c=='"') {
+							str = '"' + str + '"';
+							return new Token(TK.STRING, str, linenumber);
+						}
+						else {
+							System.err.println("scan: string missing closing \"; quitting near "+str);
+							return new Token(TK.ERROR, "bad string", linenumber);
+						}
+                    case '[':
+                    	return ccase1('[',TK.LBRACKET);
+                    case ']':
+                    	return ccase1(']',TK.RBRACKET);
                     	
 
 // QUESTION 3:  What does the following case and the code in it do?
@@ -127,7 +131,7 @@ public class Scan {
                         return ccase1or2('>','=',TK.GT,TK.GE);
 
                     case ':':
-                        return ccase2(':','=',TK.ASSIGN);
+                        return ccase1or2(':','=',TK.COLON, TK.ASSIGN);
 
                     case EOF:
                         got_eof = true;

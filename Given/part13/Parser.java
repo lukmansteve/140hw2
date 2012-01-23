@@ -38,6 +38,7 @@ public class Parser {
 
     // for code generation
     private static final int initialValueEVariable = 8888;
+    private static final int initialValueEArray = 4444;
 
     // print something in the generated code
     private void gcprint(String str) {
@@ -47,6 +48,9 @@ public class Parser {
     // it prefixes x_ in case id conflicts with C keyword.
     private void gcprintid(String str) {
         System.out.println("x_"+str);
+    }
+    private void gcprintarr(String str, int i) {
+        System.out.println("x_"+str+"["+i+"]");
     }
 
     private void program() {
@@ -81,65 +85,81 @@ public class Parser {
 
     private void var_decl() {
 		  mustbe(TK.VAR);
-        var_decl_id();
+        decl_id();
         while( is(TK.COMMA) ) {
             scan();
-            var_decl_id();
+            decl_id();
         }
+    }
+    
+    private void decl_id() {
+    	if ( is(TK.ID) ) {
+    		Token temp = tok;
+    		scan();
+    		if ( is(TK.LBRACKET) ) {
+    			scan();
+				int lb = bound();//true => lower bound
+				mustbe(TK.COLON);
+				int ub = bound();//false => upper bound
+				mustbe(TK.RBRACKET);//need to know size / offset by here... // scan here
+				var_decl_arr(temp, lb, ub);
+    		}
+    		else
+    			var_decl_id(temp);
+    	}
+    	else {
+            parse_error("expected id in var declaration, got " + tok);
+        }
+    	// already scans at end
     }
 
 	
-    private void var_decl_id() {
-        if( is(TK.ID) ) {
-            if (symtab.add_entry(tok.string, tok.lineNumber, TK.VAR)) {
-                gcprint("int ");
-                gcprintid(tok.string);
-					 scan();
-					 if ( is(TK.OPENBR)) {
-						  bound(true);//true => lower bound
-						  mustbe(TK.COLON);
-						  bound(false);//false => upper bound
-						  mustbe(TK.CLOSEBR);//need to know size / offset by here...
-					}
-					 else
-                	   gcprint("="+initialValueEVariable+";");
-					 return;
-            }
-            scan();
+    private void var_decl_id(Token temp) {
+        if (symtab.add_entry(temp.string, temp.lineNumber, TK.VAR)) {
+        	gcprint("int ");
+            gcprintid(temp.string);
+            gcprint("="+initialValueEVariable+";");
         }
-        else {
-            parse_error("expected id in var declaration, got " + tok);
-        }
+        //scan();
     }
 
 	// public boolean add_entry(String myid, int myline, TK myVarOrConst)
 
+    
+    private void var_decl_arr(Token t, int lb, int ub) {
+    	int size = ub - lb + 1;
+    	int offset = lb;
+    	if (size <= 0) {
+    		System.err.println("declared size of "+ t.string + " is <= 0 ("+ size +") on line "
+                    + t.lineNumber);
+    		System.exit(1);
+    	}
+    	if (symtab.add_entry(t.string, t.lineNumber, TK.ARRAY, offset, size)) {
+    		gcprint("int ");
+            gcprintarr(t.string, size); // prints x_(id)[size]
+            // initialize array:
+            String initializer = "";
+            for (int i=0; i<size; i++)
+            	initializer += (initialValueEArray + ", ");
+            initializer = "{" + initializer + "}";
+            gcprint("="+initializer+";");
+    	}
+    	//scan();
+    }
 
-	 private void bound(boolean lower){
+	 private int bound(){
+		 int ret = -1; // -1 means error in retrieving the bound from input somehow
 		int multiplyBy = 1;
-		if( is (TK.DASH) ) {
+		if( is (TK.MINUS) ) {
 			multiplyBy = -1;
 			scan();
 		}
-		String myid;
-		if (lower){
-			myid = tok.string + "_lower";
-			myname = tok.string + "_arrayname" 
+		mustbeNoScan(TK.NUM);
+		if ( is(TK.NUM) ) { // should always be the case due to mustbeNoScan
+			ret = multiplyBy * Integer.parseInt(tok.string);
 		}
-		else myid = tok.string + "_upper";
-		
-		
-		add_entry(myid, linenumber, TK.VAR);
-				
-	
-		
-		if( !is (TK.NUM) ) {
-			parse_error("expected number");
-			return;
-		}
-		gcprint(tok.string);
-	  		boundry = Integer.parseInt(tok.string);
-		
+		scan();
+		return ret;
 	}
 
     private void const_decl() {
@@ -189,8 +209,9 @@ public class Parser {
 
     private void assignment(){
         if( is(TK.ID) ) {
-            lvalue_id(tok.string, tok.lineNumber);
-            scan();
+            //lvalue_id(tok.string, tok.lineNumber);
+            //scan();
+        	id_sub(); // need to scan at end of this function or after
         }
         else {
             parse_error("missing id on left-hand-side of assignment");
@@ -199,6 +220,22 @@ public class Parser {
         gcprint("=");
         expression();
         gcprint(";");
+    }
+    
+    private void id_sub(){
+    	Token temp = tok; // save current token
+    	scan(); // scan here so don't scan at end
+    	if ( is(TK.LBRACKET) ) {
+    		scan(); // get past '['
+    		Entry e = lvalue_array(temp.string, temp.lineNumber);
+    		gcprint("x_"+temp.string+"[(-1)*"+e.getArrayOffset()+"+");
+    		expression();
+    		mustbe(TK.RBRACKET);
+    		gcprint("]");
+    	}
+    	else {
+    		lvalue_id(temp.string, temp.lineNumber);
+    	}
     }
 
     private void print(){ // printf( "%d\n", 3); || printf( "%s\n", "asdsa");
@@ -259,7 +296,7 @@ public class Parser {
         String id = tok.string;
         Entry iv = null; // index variable in symtab
         if( is(TK.ID) ) {
-            iv = lvalue_id(tok.string, tok.lineNumber);
+            iv = lvalue_id_index(tok.string, tok.lineNumber);
             iv.setIsIV(true); // mark Entry as IV
             scan();
         }
@@ -341,8 +378,18 @@ public class Parser {
             gcprint(")");
         }
         else if( is(TK.ID) ) {
-            rvalue_id(tok.string, tok.lineNumber);
-            scan();
+        	Token temp = tok;
+        	scan();
+        	if ( is(TK.LBRACKET) ) {
+        		scan(); // go past openbr
+        		Entry e = rvalue_array(temp.string, temp.lineNumber);
+        		gcprint("x_"+temp.string+"[(-1)*"+e.getArrayOffset()+"+");
+        		expression();
+        		mustbe(TK.RBRACKET);
+        		gcprint("]");
+        	}
+        	else
+        		rvalue_id(temp.string, temp.lineNumber);
         }
         else if( is(TK.NUM) ) {
             gcprint(tok.string);
@@ -360,6 +407,11 @@ public class Parser {
             System.exit(1);
         }
         if( !e.isVar()) {
+        	if (e.isArray()) { // arrays get special message
+        		System.err.println("missing subscript for array "+ id + " on line "
+                        + lno);
+            	System.exit(1);
+        	}
             System.err.println("constant on left-hand-side of assignment "+ id + " on line "
                                + lno);
             System.exit(1);
@@ -372,6 +424,33 @@ public class Parser {
         gcprintid(id);
         return e;
     }
+    
+    // special lvalue_id for index variables
+    private Entry lvalue_id_index(String id, int lno) {
+    	Entry e = symtab.search(id);
+    	if (e != null && e.isArray()) {
+    		System.err.println("array on left-hand-side of assignment (used as index variable) "
+					+ id + " on line " + lno);
+			System.exit(1);
+    	}
+    	return lvalue_id(id, lno);
+    }
+    
+    private Entry lvalue_array(String id, int lno) {
+    	Entry e = symtab.search(id);
+        if( e == null) {
+            System.err.println("undeclared variable "+ id + " on line "
+                               + lno);
+            System.exit(1);
+        }
+        if( !e.isArray()) {
+            System.err.println("subscripting non-array "+ id + " on line "
+                               + lno);
+            System.exit(1);
+        }
+        // does not generate code
+        return e;
+    }
 
     private void rvalue_id(String id, int lno) {
         Entry e = symtab.search(id);
@@ -380,7 +459,27 @@ public class Parser {
                                + lno);
             System.exit(1);
         }
+        if (e.isArray()) { // array with no []
+        	System.err.println("missing subscript for array "+ id + " on line "
+                    + lno);
+        	System.exit(1);
+        }
         gcprintid(id);
+    }
+    
+    private Entry rvalue_array(String id, int lno) {
+    	Entry e = symtab.search(id);
+        if( e == null) {
+            System.err.println("undeclared variable "+ id + " on line "
+                               + lno);
+            System.exit(1);
+        }
+        if( !e.isArray() ) {
+            System.err.println("subscripting non-array "+ id + " on line "
+                               + lno);
+            System.exit(1);
+        }
+        return e;
     }
 
 
@@ -398,6 +497,15 @@ public class Parser {
         }
         scan();
     }
+    // same as mustbe but does not scan
+    private void mustbeNoScan(TK tk) {
+    	if( ! is(tk) ) {
+            System.err.println( "mustbe: want " + tk + ", got " +
+                                    tok);
+            parse_error( "missing token (mustbe)" );
+        }
+    }
+    
     boolean first(TK [] set) {
         int k = 0;
         while(set[k] != TK.none && set[k] != tok.kind) {

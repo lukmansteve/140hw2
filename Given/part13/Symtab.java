@@ -31,7 +31,7 @@ public class Symtab {
     }
 
     // add var or const entry to current block
-    public boolean add_entry(String myid, int myline, TK myVarOrConst) {
+    public boolean add_entry(String myid, int myline, TK myVarOrConstOrArray) {
         Entry e = search_this_block(myid);
         if (e != null) {//if e is there
             System.err.println(e.whatAreYou() +
@@ -41,7 +41,24 @@ public class Symtab {
                 return false;
         }
 			//otherwise it's not so:
-        Entry p = new Entry(myid, myline, myVarOrConst);
+        Entry p = new Entry(myid, myline, myVarOrConstOrArray);
+        st.peek().add(p);//add the entry to the top array list in the stack.
+        return true;
+    }
+    
+    // add array to current block
+    // methods are identical except: here array offset and size is also stored
+    public boolean add_entry(String myid, int myline, TK myVarOrConstOrArray, int offset, int size) {
+        Entry e = search_this_block(myid);
+        if (e != null) {//if e is there
+            System.err.println(e.whatAreYou() +
+                                   " " + myid +
+                                   " is redeclared on line "+
+                                   myline);
+                return false;
+        }
+			//otherwise it's not so:
+        Entry p = new Entry(myid, myline, myVarOrConstOrArray, offset, size);
         st.peek().add(p);//add the entry to the top array list in the stack.
         return true;
     }

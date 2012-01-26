@@ -2,4 +2,5 @@
 # test one and do diff
 
 ./run $1 >&! $1.output
+#cat $1.c
 diff $1.correct $1.output
